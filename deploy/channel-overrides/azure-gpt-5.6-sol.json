@@ -19,6 +19,28 @@
         {"path": "original_model", "mode": "contains", "value": "gpt-5.6-sol"}
       ],
       "logic": "OR"
+    },
+    {
+      "description": "Raise small Responses output budgets before reasoning consumes all visible output.",
+      "path": "max_output_tokens",
+      "mode": "set",
+      "value": 512,
+      "conditions": [
+        {"path": "model", "mode": "contains", "value": "gpt-5.6-sol"},
+        {"path": "max_output_tokens", "mode": "lt", "value": 512}
+      ],
+      "logic": "AND"
+    },
+    {
+      "description": "Raise small Responses output budgets before reasoning consumes all visible output.",
+      "path": "max_output_tokens",
+      "mode": "set",
+      "value": 512,
+      "conditions": [
+        {"path": "original_model", "mode": "contains", "value": "gpt-5.6-sol"},
+        {"path": "max_output_tokens", "mode": "lt", "value": 512}
+      ],
+      "logic": "AND"
     }
   ]
 }

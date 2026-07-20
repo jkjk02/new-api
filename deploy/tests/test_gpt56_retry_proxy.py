@@ -264,16 +264,41 @@ class ChannelOverrideProfileTests(unittest.TestCase):
         profile = self.load_profile("azure-gpt-5.6-sol.json")
         operations = profile["operations"]
 
+        delete_operations = [
+            operation for operation in operations if operation["mode"] == "delete"
+        ]
+        max_token_operations = [
+            operation
+            for operation in operations
+            if operation["path"] == "max_output_tokens"
+            and operation["mode"] == "set"
+        ]
         self.assertEqual(
-            {(operation["path"], operation["mode"]) for operation in operations},
-            {("temperature", "delete"), ("top_p", "delete")},
+            {operation["path"] for operation in delete_operations},
+            {"temperature", "top_p"},
         )
-        for operation in operations:
+        for operation in delete_operations:
             self.assertEqual(operation["logic"], "OR")
             self.assertEqual(
                 {condition["value"] for condition in operation["conditions"]},
                 {"gpt-5.6-sol"},
             )
+        self.assertEqual(len(max_token_operations), 2)
+        self.assertTrue(all(operation["value"] == 512 for operation in max_token_operations))
+        self.assertEqual(
+            {
+                operation["conditions"][0]["path"]
+                for operation in max_token_operations
+            },
+            {"model", "original_model"},
+        )
+        self.assertTrue(
+            all(
+                operation["conditions"][1]
+                == {"path": "max_output_tokens", "mode": "lt", "value": 512}
+                for operation in max_token_operations
+            )
+        )
 
     def test_fable_profile_contains_all_production_rules(self):
         profile = self.load_profile("claude-fable-5.json")

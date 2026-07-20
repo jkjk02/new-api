@@ -98,7 +98,7 @@ SQL_MAX_LIFETIME=60
 
 仓库保存两份脱敏参数配置：
 
-- `azure-gpt-5.6-sol.json`：按模型删除 `temperature`、`top_p`。
+- `azure-gpt-5.6-sol.json`：按模型删除 `temperature`、`top_p`，并将显式低于 `512` 的 `max_output_tokens` 提升到 `512`，避免推理 token 耗尽后出现 HTTP 200 空正文。
 - `claude-fable-5.json`：按模型删除 `temperature`、`top_p`、`top_k`；当 `max_tokens < 512` 时提升到 512。
 
 单个渠道优先在后台的渠道新增/编辑抽屉中设置：
