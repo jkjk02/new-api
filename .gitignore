@@ -40,6 +40,20 @@ skills-lock.json
 # Generated i18n sync reports.
 web/default/src/i18n/locales/_reports/
 
+# Production customization secrets and migration artifacts.
+deploy/env/*.env
+!deploy/env/*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.dump
+*.sql.gz
+*.tar.gz.enc
+.private/
+__pycache__/
+*.py[cod]
+
 # Local-only live probes and scratch test workspaces.
 .local-tests/
 service/relayconvert/chat_responses_live_local_test.go
