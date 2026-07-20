@@ -373,6 +373,126 @@ export const FIELD_DESCRIPTIONS = {
 } as const
 
 // ============================================================================
+// Parameter Override Presets
+// ============================================================================
+
+export const CHANNEL_PARAM_OVERRIDE_PRESETS = {
+  gpt_56_sol_compat: {
+    label: 'GPT-5.6 SOL',
+    payload: {
+      operations: [
+        {
+          description:
+            'Remove temperature for gpt-5.6-sol Responses compatibility.',
+          path: 'temperature',
+          mode: 'delete',
+          conditions: [
+            { path: 'model', mode: 'contains', value: 'gpt-5.6-sol' },
+            {
+              path: 'original_model',
+              mode: 'contains',
+              value: 'gpt-5.6-sol',
+            },
+          ],
+          logic: 'OR',
+        },
+        {
+          description: 'Remove top_p for gpt-5.6-sol Responses compatibility.',
+          path: 'top_p',
+          mode: 'delete',
+          conditions: [
+            { path: 'model', mode: 'contains', value: 'gpt-5.6-sol' },
+            {
+              path: 'original_model',
+              mode: 'contains',
+              value: 'gpt-5.6-sol',
+            },
+          ],
+          logic: 'OR',
+        },
+      ],
+    },
+  },
+  claude_fable_5_compat: {
+    label: 'Claude Fable 5',
+    payload: {
+      operations: [
+        {
+          description: 'Remove temperature for Claude Fable 5 compatibility.',
+          path: 'temperature',
+          mode: 'delete',
+          conditions: [
+            { path: 'model', mode: 'contains', value: 'claude-fable-5' },
+            {
+              path: 'original_model',
+              mode: 'contains',
+              value: 'claude-fable-5',
+            },
+          ],
+          logic: 'OR',
+        },
+        {
+          description: 'Remove top_p for Claude Fable 5 compatibility.',
+          path: 'top_p',
+          mode: 'delete',
+          conditions: [
+            { path: 'model', mode: 'contains', value: 'claude-fable-5' },
+            {
+              path: 'original_model',
+              mode: 'contains',
+              value: 'claude-fable-5',
+            },
+          ],
+          logic: 'OR',
+        },
+        {
+          description: 'Remove top_k for Claude Fable 5 compatibility.',
+          path: 'top_k',
+          mode: 'delete',
+          conditions: [
+            { path: 'model', mode: 'contains', value: 'claude-fable-5' },
+            {
+              path: 'original_model',
+              mode: 'contains',
+              value: 'claude-fable-5',
+            },
+          ],
+          logic: 'OR',
+        },
+        {
+          description:
+            'Raise small completion budgets before adaptive reasoning consumes all visible output.',
+          path: 'max_tokens',
+          mode: 'set',
+          value: 512,
+          conditions: [
+            { path: 'model', mode: 'contains', value: 'claude-fable-5' },
+            { path: 'max_tokens', mode: 'lt', value: 512 },
+          ],
+          logic: 'AND',
+        },
+        {
+          description:
+            'Raise small completion budgets before adaptive reasoning consumes all visible output.',
+          path: 'max_tokens',
+          mode: 'set',
+          value: 512,
+          conditions: [
+            {
+              path: 'original_model',
+              mode: 'contains',
+              value: 'claude-fable-5',
+            },
+            { path: 'max_tokens', mode: 'lt', value: 512 },
+          ],
+          logic: 'AND',
+        },
+      ],
+    },
+  },
+} satisfies Record<string, { label: string; payload: Record<string, unknown> }>
+
+// ============================================================================
 // Channel Type Specific Configurations
 // ============================================================================
 

@@ -280,6 +280,13 @@ func CalcOpenRouterCacheCreateTokens(usage dto.Usage, priceData types.PriceData)
 }
 
 func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage *dto.Usage, extraContent string) {
+	if usage != nil {
+		actualTokens := usage.TotalTokens
+		if actualTokens <= 0 {
+			actualTokens = usage.PromptTokens + usage.CompletionTokens
+		}
+		ReconcileChannelCapacity(ctx, actualTokens)
+	}
 
 	var tieredUsedVars map[string]bool
 	if snap := relayInfo.TieredBillingSnapshot; snap != nil {

@@ -962,6 +962,9 @@ func (channel *Channel) ValidateSettings() error {
 			return err
 		}
 	}
+	if channelOtherSettings.ConcurrencyLimit < 0 || channelOtherSettings.RPMLimit < 0 || channelOtherSettings.TPMLimit < 0 {
+		return errors.New("channel capacity limits must be non-negative")
+	}
 	if channel.Type == constant.ChannelTypeAdvancedCustom && channelOtherSettings.UpstreamModelUpdateCheckEnabled {
 		if _, ok := channelOtherSettings.AdvancedCustom.ModelListRoute(); !ok {
 			return fmt.Errorf("advanced custom channels require a %s route when upstream model update checks are enabled", dto.AdvancedCustomModelListPath)

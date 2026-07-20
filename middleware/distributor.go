@@ -29,10 +29,50 @@ type ModelRequest struct {
 	Group string `json:"group,omitempty"`
 }
 
+type channelCapacitySelectionResult struct {
+	Channel      *model.Channel
+	Saturated    []string
+	CapacityErr  error
+	SelectionErr error
+}
+
+func selectChannelByCapacity(
+	initialChannel *model.Channel,
+	canFallback bool,
+	acquire func(*model.Channel) ([]string, error),
+	selectNext func(map[int]struct{}) (*model.Channel, error),
+) channelCapacitySelectionResult {
+	channel := initialChannel
+	excludedChannels := map[int]struct{}{}
+	var lastSaturated []string
+	for channel != nil {
+		saturated, err := acquire(channel)
+		if err != nil {
+			return channelCapacitySelectionResult{CapacityErr: err}
+		}
+		if len(saturated) == 0 {
+			return channelCapacitySelectionResult{Channel: channel}
+		}
+		lastSaturated = saturated
+		excludedChannels[channel.Id] = struct{}{}
+		if !canFallback {
+			return channelCapacitySelectionResult{Saturated: saturated}
+		}
+		channel, err = selectNext(excludedChannels)
+		if err != nil {
+			return channelCapacitySelectionResult{SelectionErr: err}
+		}
+	}
+	return channelCapacitySelectionResult{Saturated: lastSaturated}
+}
+
 func Distribute() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var channel *model.Channel
+		var affinitySelectedGroup string
+		var affinitySelectedChannelID int
 		channelId, ok := common.GetContextKey(c, constant.ContextKeyTokenSpecificChannelId)
+		specificChannel := ok
 		modelRequest, shouldSelectChannel, err := getModelRequest(c)
 		if err != nil {
 			abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidRequest, map[string]any{"Error": err.Error()}))
@@ -115,7 +155,8 @@ func Distribute() func(c *gin.Context) {
 									common.SetContextKey(c, constant.ContextKeyAutoGroup, g)
 									channel = preferred
 									affinityUsable = true
-									service.MarkChannelAffinityUsed(c, g, preferred.Id)
+									affinitySelectedGroup = g
+									affinitySelectedChannelID = preferred.Id
 									break
 								}
 							}
@@ -123,7 +164,8 @@ func Distribute() func(c *gin.Context) {
 							channel = preferred
 							selectGroup = usingGroup
 							affinityUsable = true
-							service.MarkChannelAffinityUsed(c, usingGroup, preferred.Id)
+							affinitySelectedGroup = usingGroup
+							affinitySelectedChannelID = preferred.Id
 						}
 					}
 					if !affinityUsable && !service.ShouldKeepChannelAffinityOnChannelDisabled() {
@@ -160,13 +202,79 @@ func Distribute() func(c *gin.Context) {
 				}
 			}
 		}
+		estimatedTokens := estimateChannelCapacityTokens(c, modelRequest.Model)
+		capacitySelection := selectChannelByCapacity(
+			channel,
+			!specificChannel && shouldSelectChannel,
+			func(candidate *model.Channel) ([]string, error) {
+				_, saturated, capacityErr := service.TryAcquireChannelCapacity(c, candidate, estimatedTokens)
+				return saturated, capacityErr
+			},
+			func(excludedChannels map[int]struct{}) (*model.Channel, error) {
+				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+				selected, _, selectionErr := service.CacheGetRandomSatisfiedChannel(&service.RetryParam{
+					Ctx:         c,
+					ModelName:   modelRequest.Model,
+					TokenGroup:  usingGroup,
+					RequestPath: c.Request.URL.Path,
+					Retry:       common.GetPointer(0),
+					Excluded:    excludedChannels,
+				})
+				return selected, selectionErr
+			},
+		)
+		if capacitySelection.CapacityErr != nil {
+			abortWithOpenAiMessage(c, http.StatusInternalServerError, capacitySelection.CapacityErr.Error(), types.ErrorCodeChannelCapacityExhausted)
+			return
+		}
+		if capacitySelection.SelectionErr != nil {
+			abortWithOpenAiMessage(c, http.StatusServiceUnavailable, capacitySelection.SelectionErr.Error(), types.ErrorCodeGetChannelFailed)
+			return
+		}
+		channel = capacitySelection.Channel
+		if channel == nil {
+			if specificChannel || !shouldSelectChannel {
+				abortWithOpenAiMessage(c, http.StatusTooManyRequests, fmt.Sprintf("channel capacity exhausted: %s", strings.Join(capacitySelection.Saturated, ", ")), types.ErrorCodeChannelCapacityExhausted)
+				return
+			}
+			abortWithOpenAiMessage(c, http.StatusTooManyRequests, "all matching channels are at capacity", types.ErrorCodeChannelCapacityExhausted)
+			return
+		}
+		if channel != nil && channel.Id == affinitySelectedChannelID {
+			service.MarkChannelAffinityUsed(c, affinitySelectedGroup, affinitySelectedChannelID)
+		}
 		common.SetContextKey(c, constant.ContextKeyRequestStartTime, time.Now())
 		SetupContextForSelectedChannel(c, channel, modelRequest.Model)
+		defer service.ReleaseChannelCapacity(c)
 		c.Next()
 		if channel != nil && c.Writer != nil && c.Writer.Status() < http.StatusBadRequest {
 			service.RecordChannelAffinity(c, channel.Id)
 		}
 	}
+}
+
+func estimateChannelCapacityTokens(c *gin.Context, modelName string) int64 {
+	storage, err := common.GetBodyStorage(c)
+	if err != nil {
+		return 1
+	}
+	requestBody, err := storage.Bytes()
+	if err != nil {
+		return 1
+	}
+	_, _ = storage.Seek(0, io.SeekStart)
+	estimated := service.CountTokenInput(string(requestBody), modelName)
+	maxOutput := gjson.GetManyBytes(requestBody, "max_tokens", "max_output_tokens")
+	for _, value := range maxOutput {
+		if value.Int() > 0 && value.Int() <= 1000000 {
+			estimated += int(value.Int())
+			break
+		}
+	}
+	if estimated < 1 {
+		return 1
+	}
+	return int64(estimated)
 }
 
 // channelSupportsRequestPath reports whether a channel can serve the request path.

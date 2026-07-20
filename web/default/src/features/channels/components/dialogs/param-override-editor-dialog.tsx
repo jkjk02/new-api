@@ -58,6 +58,8 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
+import { CHANNEL_PARAM_OVERRIDE_PRESETS } from '../../constants'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -440,6 +442,14 @@ const TEMPLATE_PRESET_CONFIG: Record<string, TemplatePresetConfig> = {
     label: 'AWS Bedrock Claude Compat',
     kind: 'operations',
     payload: AWS_BEDROCK_ANTHROPIC_COMPAT_TEMPLATE,
+  },
+  gpt_56_sol_compat: {
+    ...CHANNEL_PARAM_OVERRIDE_PRESETS.gpt_56_sol_compat,
+    kind: 'operations',
+  },
+  claude_fable_5_compat: {
+    ...CHANNEL_PARAM_OVERRIDE_PRESETS.claude_fable_5_compat,
+    kind: 'operations',
   },
 }
 
@@ -970,7 +980,6 @@ const validateOperations = (
       if (headers.length === 0)
         return t('Rule {{line}} pass_headers format is invalid', { line })
     }
-
   }
   return ''
 }

@@ -138,6 +138,7 @@ import {
 import {
   ADD_MODE_OPTIONS,
   CHANNEL_STATUS_LABELS,
+  CHANNEL_PARAM_OVERRIDE_PRESETS,
   CHANNEL_TYPE_OPTIONS,
   CHANNEL_TYPE_WARNINGS,
   ERROR_MESSAGES,
@@ -730,6 +731,9 @@ export function ChannelMutateDrawer({
   const currentAdvancedCustom = form.watch('advanced_custom')
   const currentPriority = form.watch('priority')
   const currentWeight = form.watch('weight')
+  const currentConcurrencyLimit = form.watch('concurrency_limit')
+  const currentRpmLimit = form.watch('rpm_limit')
+  const currentTpmLimit = form.watch('tpm_limit')
   const currentTestModel = form.watch('test_model')
   const currentAutoBan = form.watch('auto_ban')
   const currentTag = form.watch('tag')
@@ -995,6 +999,9 @@ export function ChannelMutateDrawer({
   const routingStrategyConfigured = Boolean(
     currentPriority ||
     currentWeight ||
+    currentConcurrencyLimit ||
+    currentRpmLimit ||
+    currentTpmLimit ||
     currentTestModel?.trim() ||
     (currentAutoBan ?? 1) !== 1
   )
@@ -3673,6 +3680,65 @@ export function ChannelMutateDrawer({
                               />
                             </div>
 
+                            <div className='grid gap-4 sm:grid-cols-3'>
+                              {[
+                                {
+                                  name: 'concurrency_limit' as const,
+                                  label: 'Concurrency Limit',
+                                  description:
+                                    'Maximum active requests for this channel. 0 means unlimited.',
+                                },
+                                {
+                                  name: 'rpm_limit' as const,
+                                  label: 'RPM Limit',
+                                  description:
+                                    'Maximum requests per minute for this channel. 0 means unlimited.',
+                                },
+                                {
+                                  name: 'tpm_limit' as const,
+                                  label: 'TPM Limit',
+                                  description:
+                                    'Maximum tokens per minute for this channel. 0 means unlimited.',
+                                },
+                              ].map((capacityField) => (
+                                <FormField
+                                  key={capacityField.name}
+                                  control={form.control}
+                                  name={capacityField.name}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        {t(capacityField.label)}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type='number'
+                                          min={0}
+                                          step={1}
+                                          {...field}
+                                          onChange={(event) =>
+                                            field.onChange(
+                                              Number(event.target.value)
+                                            )
+                                          }
+                                        />
+                                      </FormControl>
+                                      <FormDescription>
+                                        {t(capacityField.description)}
+                                      </FormDescription>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              ))}
+                            </div>
+
+                            <p className='text-muted-foreground text-xs'>
+                              {t(
+                                'When a channel reaches a capacity limit, it is skipped automatically and traffic is routed to another matching channel.'
+                              )}
+                            </p>
+
                             <FormField
                               control={form.control}
                               name='test_model'
@@ -3896,6 +3962,33 @@ export function ChannelMutateDrawer({
                                           <Code className='mr-2 h-4 w-4' />
                                           {t('New Format Template')}
                                         </Button>
+                                        {Object.entries(
+                                          CHANNEL_PARAM_OVERRIDE_PRESETS
+                                        ).map(([presetKey, preset]) => (
+                                          <Button
+                                            key={presetKey}
+                                            type='button'
+                                            variant='outline'
+                                            size='sm'
+                                            onClick={() =>
+                                              form.setValue(
+                                                'param_override',
+                                                JSON.stringify(
+                                                  preset.payload,
+                                                  null,
+                                                  2
+                                                ),
+                                                {
+                                                  shouldDirty: true,
+                                                  shouldTouch: true,
+                                                  shouldValidate: true,
+                                                }
+                                              )
+                                            }
+                                          >
+                                            {preset.label}
+                                          </Button>
+                                        ))}
                                         <Button
                                           type='button'
                                           variant='ghost'

@@ -147,6 +147,9 @@ export const channelFormSchema = z
       ),
     priority: z.number().optional(),
     weight: z.number().optional(),
+    concurrency_limit: z.number().int().min(0).optional(),
+    rpm_limit: z.number().int().min(0).optional(),
+    tpm_limit: z.number().int().min(0).optional(),
     test_model: z.string().optional(),
     auto_ban: z.number().optional(),
     status: z.number(),
@@ -320,6 +323,9 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   model_mapping: '',
   priority: 0,
   weight: 0,
+  concurrency_limit: 0,
+  rpm_limit: 0,
+  tpm_limit: 0,
   test_model: '',
   auto_ban: 1,
   status: CHANNEL_STATUS.ENABLED,
@@ -416,6 +422,9 @@ export function transformChannelToFormDefaults(
   let upstreamModelUpdateAutoSyncEnabled = false
   let upstreamModelUpdateIgnoredModels = ''
   let advancedCustom = ''
+  let concurrencyLimit = 0
+  let rpmLimit = 0
+  let tpmLimit = 0
 
   if (channel.settings) {
     try {
@@ -432,6 +441,9 @@ export function transformChannelToFormDefaults(
       allowSpeed = parsed.allow_speed === true
       claudeBetaQuery = parsed.claude_beta_query === true
       disableTaskPollingSleep = parsed.disable_task_polling_sleep === true
+      concurrencyLimit = Number(parsed.concurrency_limit) || 0
+      rpmLimit = Number(parsed.rpm_limit) || 0
+      tpmLimit = Number(parsed.tpm_limit) || 0
       upstreamModelUpdateCheckEnabled =
         parsed.upstream_model_update_check_enabled === true
       upstreamModelUpdateAutoSyncEnabled =
@@ -461,6 +473,9 @@ export function transformChannelToFormDefaults(
     model_mapping: channel.model_mapping || '',
     priority: channel.priority || 0,
     weight: channel.weight || 0,
+    concurrency_limit: concurrencyLimit,
+    rpm_limit: rpmLimit,
+    tpm_limit: tpmLimit,
     test_model: channel.test_model || '',
     auto_ban: channel.auto_ban ?? 1,
     status: channel.status,
@@ -604,6 +619,9 @@ function buildSettingsJSON(formData: ChannelFormValues): string {
 
   settingsObj.disable_task_polling_sleep =
     formData.disable_task_polling_sleep === true
+  settingsObj.concurrency_limit = formData.concurrency_limit || 0
+  settingsObj.rpm_limit = formData.rpm_limit || 0
+  settingsObj.tpm_limit = formData.tpm_limit || 0
 
   // Upstream model update settings (for model-fetchable channel types)
   if (MODEL_FETCHABLE_TYPES.has(formData.type)) {

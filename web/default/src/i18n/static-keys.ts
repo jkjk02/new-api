@@ -537,6 +537,15 @@ export const STATIC_I18N_KEYS = [
   'OpenAI Models upstream path must not contain {model}',
   'OpenAI Models route is required to enable upstream model checks',
 
+  // Channel capacity routing
+  'Concurrency Limit',
+  'RPM Limit',
+  'TPM Limit',
+  'Maximum active requests for this channel. 0 means unlimited.',
+  'Maximum requests per minute for this channel. 0 means unlimited.',
+  'Maximum tokens per minute for this channel. 0 means unlimited.',
+  'When a channel reaches a capacity limit, it is skipped automatically and traffic is routed to another matching channel.',
+
   // Dashboard flow stages (labels/descriptions passed to t at runtime)
   'User',
   'Node',
