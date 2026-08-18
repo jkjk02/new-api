@@ -27,6 +27,7 @@ import {
   ListTodo,
   MessageSquare,
   Radio,
+  ScrollText,
   ServerCog,
   Settings,
   Ticket,
@@ -148,6 +149,12 @@ export function useSidebarData(): SidebarData {
             title: t('System Info'),
             url: '/system-info',
             icon: ServerCog,
+            requiredRole: ROLE.SUPER_ADMIN,
+          },
+          {
+            title: t('Payload Logs'),
+            url: '/payload-logs',
+            icon: ScrollText,
             requiredRole: ROLE.SUPER_ADMIN,
           },
           {
