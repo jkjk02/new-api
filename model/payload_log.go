@@ -30,6 +30,21 @@ func (PayloadLog) TableName() string {
 	return "payload_logs"
 }
 
+// PayloadLogSwitchAudit records every change of the PayloadLogEnabled switch:
+// who flipped it, to what state, and when. It is readable by any authenticated
+// user so customers can independently verify the platform's logging behaviour.
+type PayloadLogSwitchAudit struct {
+	Id        int    `json:"id"`
+	CreatedAt int64  `json:"created_at" gorm:"bigint;index"`
+	UserId    int    `json:"user_id" gorm:"index"`
+	Username  string `json:"username" gorm:"index;default:''"`
+	Enabled   bool   `json:"enabled"`
+}
+
+func (PayloadLogSwitchAudit) TableName() string {
+	return "payload_log_switch_audits"
+}
+
 // payloadLogListColumns excludes the two body columns so the list view stays
 // light; full bodies are only loaded on demand via GetPayloadLogById.
 const payloadLogListColumns = "id, created_at, user_id, username, token_name, model_name, channel_id, request_id, ip, status_code, duration_ms"
@@ -46,9 +61,13 @@ func RecordPayloadLog(log *PayloadLog) {
 }
 
 // GetPayloadLogs returns a page of payload logs WITHOUT the request/response
-// bodies. Use GetPayloadLogById to fetch a single row with the full bodies.
-func GetPayloadLogs(username, modelName, requestId string, startTimestamp, endTimestamp int64, startIdx, pageSize int) (logs []*PayloadLog, total int64, err error) {
+// bodies. A non-zero userId scopes the result to that user (self view); pass 0
+// for the admin all-users view.
+func GetPayloadLogs(userId int, username, modelName, requestId string, startTimestamp, endTimestamp int64, startIdx, pageSize int) (logs []*PayloadLog, total int64, err error) {
 	tx := LOG_DB.Model(&PayloadLog{})
+	if userId != 0 {
+		tx = tx.Where("user_id = ?", userId)
+	}
 	if username != "" {
 		tx = tx.Where("username = ?", username)
 	}
@@ -71,13 +90,42 @@ func GetPayloadLogs(username, modelName, requestId string, startTimestamp, endTi
 	return logs, total, err
 }
 
-func GetPayloadLogById(id int) (*PayloadLog, error) {
+// GetPayloadLogById returns a single row with full bodies. A non-zero userId
+// enforces ownership (self view); pass 0 to allow any row (admin view).
+func GetPayloadLogById(id int, userId int) (*PayloadLog, error) {
 	if id == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
+	tx := LOG_DB.Where("id = ?", id)
+	if userId != 0 {
+		tx = tx.Where("user_id = ?", userId)
+	}
 	var log PayloadLog
-	if err := LOG_DB.Where("id = ?", id).First(&log).Error; err != nil {
+	if err := tx.First(&log).Error; err != nil {
 		return nil, err
 	}
 	return &log, nil
+}
+
+// RecordPayloadLogSwitchAudit appends an entry to the switch change history.
+func RecordPayloadLogSwitchAudit(userId int, username string, enabled bool) {
+	audit := &PayloadLogSwitchAudit{
+		CreatedAt: common.GetTimestamp(),
+		UserId:    userId,
+		Username:  username,
+		Enabled:   enabled,
+	}
+	if err := LOG_DB.Create(audit).Error; err != nil {
+		common.SysLog("failed to record payload log switch audit: " + err.Error())
+	}
+}
+
+// GetPayloadLogSwitchAudits returns the paginated switch change history.
+func GetPayloadLogSwitchAudits(startIdx, pageSize int) (audits []*PayloadLogSwitchAudit, total int64, err error) {
+	tx := LOG_DB.Model(&PayloadLogSwitchAudit{})
+	if err = tx.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err = tx.Order("id desc").Limit(pageSize).Offset(startIdx).Find(&audits).Error
+	return audits, total, err
 }
