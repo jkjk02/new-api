@@ -280,7 +280,12 @@ func SetApiRouter(router *gin.Engine) {
 
 		payloadLogRoute := apiRouter.Group("/payload_log")
 		payloadLogRoute.GET("/", middleware.AdminAuth(), controller.GetPayloadLogs)
-		payloadLogRoute.GET("/:id", middleware.AdminAuth(), controller.GetPayloadLogDetail)
+		payloadLogRoute.GET("/detail/:id", middleware.AdminAuth(), controller.GetPayloadLogDetail)
+		payloadLogRoute.GET("/self", middleware.UserAuth(), controller.GetSelfPayloadLogs)
+		payloadLogRoute.GET("/self/detail/:id", middleware.UserAuth(), controller.GetSelfPayloadLogDetail)
+		payloadLogRoute.GET("/switch", middleware.UserAuth(), controller.GetPayloadLogSwitchStatus)
+		payloadLogRoute.POST("/switch", middleware.RootAuth(), controller.SetPayloadLogSwitch)
+		payloadLogRoute.GET("/switch/audits", middleware.UserAuth(), controller.GetPayloadLogSwitchAudits)
 
 		systemTaskRoute := apiRouter.Group("/system-task")
 		systemTaskRoute.Use(middleware.RootAuth())
