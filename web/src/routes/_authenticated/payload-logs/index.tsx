@@ -16,21 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { PayloadLogs } from '@/features/payload-logs'
-import { ROLE } from '@/lib/roles'
-import { useAuthStore } from '@/stores/auth-store'
 
+// Visible to any authenticated user: regular users see only their own calls and
+// a read-only switch; root can toggle it and see all calls. Row-level scoping is
+// enforced server-side.
 export const Route = createFileRoute('/_authenticated/payload-logs/')({
-  beforeLoad: () => {
-    const { auth } = useAuthStore.getState()
-
-    if (auth.user?.role !== ROLE.SUPER_ADMIN) {
-      throw redirect({
-        to: '/403',
-      })
-    }
-  },
   component: PayloadLogs,
 })
