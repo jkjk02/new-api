@@ -41,3 +41,18 @@ export interface PayloadLogListData {
   page: number
   page_size: number
 }
+
+export interface SwitchAudit {
+  id: number
+  created_at: number
+  user_id: number
+  username: string
+  enabled: boolean
+}
+
+export interface SwitchAuditListData {
+  items: SwitchAudit[]
+  total: number
+  page: number
+  page_size: number
+}
