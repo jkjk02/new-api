@@ -18,44 +18,59 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
 
-import type { PayloadLogDetail, PayloadLogListData } from './types'
+import type {
+  PayloadLogDetail,
+  PayloadLogListData,
+  SwitchAuditListData,
+} from './types'
 
 export interface GetPayloadLogsParams {
   page?: number
   page_size?: number
-  username?: string
   model_name?: string
   request_id?: string
 }
 
-export async function getPayloadLogs(params: GetPayloadLogsParams = {}) {
-  const res = await api.get<{ data: PayloadLogListData }>('/api/payload_log/', {
-    params,
-  })
-  return res.data?.data
-}
-
-export async function getPayloadLogDetail(id: number) {
-  const res = await api.get<{ data: PayloadLogDetail }>(
-    `/api/payload_log/${id}`
+// isAdmin selects between the all-users endpoint and the caller's own-logs
+// endpoint, so a regular user can only ever see their own calls.
+export async function getPayloadLogs(
+  params: GetPayloadLogsParams,
+  isAdmin: boolean
+) {
+  const res = await api.get<{ data: PayloadLogListData }>(
+    isAdmin ? '/api/payload_log/' : '/api/payload_log/self',
+    { params }
   )
   return res.data?.data
 }
 
-// The platform-wide switch is stored as the PayloadLogEnabled option
-// (root-only, read/written through the generic option endpoints).
-export async function getPayloadLogEnabled() {
-  const res = await api.get<{ data: { key: string; value: string }[] }>(
-    '/api/option/'
-  )
-  const opt = res.data?.data?.find((o) => o.key === 'PayloadLogEnabled')
-  return opt?.value === 'true'
+export async function getPayloadLogDetail(id: number, isAdmin: boolean) {
+  const url = isAdmin
+    ? `/api/payload_log/detail/${id}`
+    : `/api/payload_log/self/detail/${id}`
+  const res = await api.get<{ data: PayloadLogDetail }>(url)
+  return res.data?.data
 }
 
-export async function setPayloadLogEnabled(enabled: boolean) {
-  const res = await api.put('/api/option/', {
-    key: 'PayloadLogEnabled',
-    value: enabled,
-  })
+export async function getSwitchStatus() {
+  const res = await api.get<{ data: { enabled: boolean } }>(
+    '/api/payload_log/switch'
+  )
+  return res.data?.data?.enabled ?? false
+}
+
+// Root only (enforced server-side). Records who flipped the switch.
+export async function setSwitch(enabled: boolean) {
+  const res = await api.post('/api/payload_log/switch', { enabled })
   return res.data
+}
+
+export async function getSwitchAudits(
+  params: { page?: number; page_size?: number } = {}
+) {
+  const res = await api.get<{ data: SwitchAuditListData }>(
+    '/api/payload_log/switch/audits',
+    { params }
+  )
+  return res.data?.data
 }
