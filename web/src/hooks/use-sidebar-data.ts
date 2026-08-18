@@ -98,6 +98,11 @@ export function useSidebarData(): SidebarData {
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
           },
+          {
+            title: t('Payload Logs'),
+            url: '/payload-logs',
+            icon: ScrollText,
+          },
         ],
       },
       {
@@ -149,12 +154,6 @@ export function useSidebarData(): SidebarData {
             title: t('System Info'),
             url: '/system-info',
             icon: ServerCog,
-            requiredRole: ROLE.SUPER_ADMIN,
-          },
-          {
-            title: t('Payload Logs'),
-            url: '/payload-logs',
-            icon: ScrollText,
             requiredRole: ROLE.SUPER_ADMIN,
           },
           {
